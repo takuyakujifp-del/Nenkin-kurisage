@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}</style>
+<title>老齢年金 繰下げ・繰上げ試算</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<style>
+/* Layout: 左に入力（定期便の数字と住所）、右に結果（要約→累計グラフ→内訳→年齢別比較）。狭い画面では縦に積む */
+:root{
+  --bg:#f2f5fa; --panel:#ffffff; --ink:#1d2a3a; --muted:#56637a; --line:#d6dde8;
+  --accent:#0f8378; --accent-soft:#dcf2ef; --base:#8f9bad; --early:#c8611a; --early-soft:#fdebdc;
+  --warn:#a63a2b; --warn-soft:#fbe4df; --hl:#fff1c2; --tax:#6b45c4;
+  --blue:#2a66d1; --blue-soft:#e3edfd; --green:#0e8a4c; --green-soft:#ddf5e7;
+  --orange:#d4691a; --orange-soft:#fdecdc; --purple:#7046c8; --purple-soft:#eee7fb;
+  --pink:#c4386f; --pink-soft:#fbe4ed; --amber-soft:#fff5d6; --amber-line:#ecc75a;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#121821; --panel:#1b2330; --ink:#e6ebf2; --muted:#9eabbd; --line:#2e3a4b;
+  --accent:#4fc9bc; --accent-soft:#163633; --base:#7f8c9e; --early:#f0a160; --early-soft:#3a2816;
+  --warn:#f2907f; --warn-soft:#3b211d; --hl:#3d3418; --tax:#b49cf2;
+  --blue:#7fabf5; --blue-soft:#18273f; --green:#5fd898; --green-soft:#12301f;
+  --orange:#f2a65e; --orange-soft:#3a2714; --purple:#b49cf2; --purple-soft:#271f3d;
+  --pink:#f28db5; --pink-soft:#3b1b2a; --amber-soft:#36301a; --amber-line:#8a7430; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7;padding:24px 16px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header h1{font-family:var(--f-display);font-weight:900;font-size:clamp(22px,3.4vw,30px);margin:0;letter-spacing:.02em;text-wrap:balance}
+header::before{content:"";display:block;height:6px;border-radius:3px;margin-bottom:14px;background:linear-gradient(90deg,var(--blue) 0 20%,var(--green) 20% 40%,var(--orange) 40% 60%,var(--purple) 60% 80%,var(--pink) 80% 100%)}
+header{position:relative}
+.themebtn{float:right;margin:0 0 8px 12px;font:inherit;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;white-space:nowrap}
+.themebtn:hover{border-color:var(--blue);color:var(--blue)}
+header h1 .ed{font-size:.5em;font-weight:700;vertical-align:middle;border-radius:999px;padding:2px 10px;margin-left:8px;background:var(--orange);color:var(--panel);letter-spacing:.05em;white-space:nowrap}
+.caution{display:flex;gap:10px;align-items:flex-start;background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.65;margin-top:12px;max-width:none}
+.caution .ic{flex:none;width:22px;height:22px;border-radius:50%;background:var(--orange);color:var(--panel);font-weight:900;font-size:14px;display:grid;place-items:center;margin-top:1px}
+.caution b{color:var(--orange)}
+header p{margin:4px 0 0;color:var(--muted);max-width:72ch}
+.grid{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.panel h2{font-family:var(--f-display);font-size:16px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.panel h2 .no{font-size:12px;background:var(--ink);color:var(--panel);border-radius:4px;padding:1px 7px}
+.no.c-blue{background:var(--blue)}.no.c-purple{background:var(--purple)}.no.c-orange{background:var(--orange)}.no.c-green{background:var(--accent)}.no.c-pink{background:var(--pink)}
+#inPanel{border-top:4px solid var(--blue)}
+.form{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:4px}
+.sep{border-top:1px dashed var(--line);padding-top:14px}
+.taxbtn{font:inherit;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 12px;border-radius:8px;border:2px dashed var(--green);background:var(--green-soft);color:var(--green);cursor:pointer}
+.taxbtn[aria-expanded="true"]{border-style:solid;background:var(--panel)}
+.taxbtn .pm{font-size:18px;line-height:1}
+.taxbox{display:flex;flex-direction:column;gap:16px;padding:14px;border-radius:8px;background:var(--green-soft);margin-top:-6px}
+label,.lbl{font-weight:700;font-size:14px}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.6}
+input[type=number],input[type=date],select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;font-variant-numeric:tabular-nums}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.yen{display:flex;align-items:center;gap:6px}.yen span{white-space:nowrap;color:var(--muted)}
+.conv{font-weight:700;color:var(--accent);font-size:13.5px;font-variant-numeric:tabular-nums}
+.age{display:grid;grid-template-columns:1fr auto 1fr auto;gap:6px;align-items:center}
+.age span{color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;border:0;background:var(--bg);color:var(--muted);padding:8px 6px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--blue);color:var(--panel);font-weight:700}
+.chk{display:flex;gap:10px;align-items:flex-start;font-weight:700;font-size:14px;cursor:pointer;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.chk:has(input:checked){border-color:var(--green);background:var(--green-soft)}
+.chk input{width:18px;height:18px;margin:3px 0 0;accent-color:var(--accent);flex:none}
+.chk small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.cat{font-size:13px;background:var(--accent-soft);border-radius:6px;padding:8px 10px}
+.msg{font-size:13px;background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:8px 10px}
+.flag{font-size:12.5px;background:var(--hl);border-radius:6px;padding:6px 10px;line-height:1.6}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.results{display:flex;flex-direction:column;gap:20px;min-width:0}
+.mode{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--accent-soft);color:var(--accent)}
+.mode.gross{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.sum{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+@media (max-width:640px){.sum{grid-template-columns:1fr 1fr}}
+.sum>div{padding:14px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0;min-width:0}
+.sum .k{font-size:12.5px;color:var(--muted);font-weight:700}
+.sum>div:nth-child(1){background:var(--blue-soft)}.sum>div:nth-child(1) .k{color:var(--blue)}
+.sum>div:nth-child(2){background:var(--accent-soft)}.sum>div:nth-child(2) .k{color:var(--accent)}
+.sum>div:nth-child(3){background:var(--orange-soft)}.sum>div:nth-child(3) .k{color:var(--orange)}
+.sum>div:nth-child(4){background:var(--purple-soft)}.sum>div:nth-child(4) .k{color:var(--purple)}
+.hero{background:var(--green-soft);border:2px solid var(--green);border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
+.hero.gross{background:var(--blue-soft);border-color:var(--blue)}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.hero-k{font-family:var(--f-display);font-weight:900;font-size:16px;color:var(--green)}
+.hero-v{font-family:var(--f-display);font-weight:900;font-size:clamp(38px,7vw,58px);line-height:1.05;color:var(--green);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.hero-v small{font-size:.38em;margin-left:4px;font-weight:700}
+.hero.gross .hero-k,.hero.gross .hero-v{color:var(--blue)}
+.hero-s{display:flex;flex-wrap:wrap;gap:8px;font-size:13px}
+.chip{background:var(--panel);border-radius:999px;padding:3px 12px;border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.chip.ded{color:var(--tax)}.chip.cmp b{font-variant-numeric:tabular-nums}
+.hero .inline select{background:var(--panel)}
+.sum .v{font-family:var(--f-display);font-weight:900;font-size:clamp(20px,2.6vw,26px);font-variant-numeric:tabular-nums;line-height:1.3}
+.sum .v small{font-size:13px;font-weight:500;margin-left:2px}
+.sum .s{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pos{color:var(--accent)}.neg{color:var(--early)}
+.verdict{font-size:15px;padding:12px 16px;border-radius:8px;background:var(--accent-soft);border-left:5px solid var(--accent)}
+.verdict.early{background:var(--early-soft);border-left-color:var(--early)}
+.verdict b{font-variant-numeric:tabular-nums}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.legend i.sw{height:12px;opacity:.35;border-radius:3px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:12.5px;color:var(--muted);font-weight:700;background:var(--blue-soft)}
+th:first-child,td:first-child{text-align:left}
+tr.cur td{background:var(--accent-soft);font-weight:700}
+tr.best td:last-child{background:var(--hl);font-weight:700}
+tr.net td{font-weight:900;font-size:18px;border-top:2px solid var(--green);background:var(--green-soft);color:var(--green)}
+tr.netY td{font-weight:700;color:var(--green);background:var(--green-soft);font-size:13.5px}
+td.ded{color:var(--tax)}
+td.minus{color:var(--orange);background:var(--orange-soft);font-weight:700}
+.t1note{margin:8px 0 0;color:var(--orange);font-weight:700}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--bg)}
+.inline{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:400}
+.inline select{width:auto;font-size:14px;padding:4px 8px}
+.notes{font-size:13px;color:var(--muted)}
+.notes ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+.notes b{color:var(--ink)}
+.notes a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* スマホ：表を詰めて、左端の列を固定 */
+.swipe{display:none}
+@media (max-width:640px){
+  .swipe{display:block;margin:0 0 6px;font-size:12px;color:var(--muted);text-align:right}
+  table{font-size:13px}
+  th,td{padding:6px 7px}
+  th{font-size:11.5px;white-space:normal;vertical-align:bottom;line-height:1.35}
+  th:first-child,td:first-child{position:sticky;left:0;z-index:1;background:var(--panel);white-space:normal;word-break:keep-all;min-width:7.5em;box-shadow:1px 0 0 var(--line)}
+  th:first-child{background:var(--blue-soft)}
+  .hide-sm{display:none}
+  .inline select,#bdAge{font-size:16px}
+  tr.net td{font-size:15px}
+}
+/* スマホ：入力と結果をタブで切り替え */
+.tabbar{display:none}
+@media (max-width:860px){
+  body{padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))}
+  .wrap[data-tab="in"] .results{display:none}
+  .wrap[data-tab="out"] #inPanel{display:none}
+  .wrap[data-tab="out"] header p{display:none}
+  .tabbar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--panel);border-top:1px solid var(--line);padding:8px 16px calc(10px + env(safe-area-inset-bottom, 0px));box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+  .mini{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:8px;font-size:11.5px;color:var(--muted);margin-bottom:8px;font-variant-numeric:tabular-nums;line-height:1.3}
+  .mini span{display:flex;flex-direction:column;min-width:0}
+  .mini b{color:var(--ink);font-size:14px;white-space:nowrap}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tabs button{font:inherit;font-weight:700;font-size:15px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+  .tabs button[aria-selected="true"]{background:var(--blue);color:var(--panel);border-color:var(--blue)}
+  .mini b.netv{color:var(--green);font-size:15px}
+}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="wrap" data-tab="in">
+<header>
+  <button type="button" class="themebtn" id="themeBtn" aria-pressed="false">黒い背景にする</button>
+  <h1>老齢年金 繰下げ・繰上げ試算<span class="ed">2026年度 青森県版</span></h1>
+  <p>65歳からの年金見込額をもとに、受給開始を早めた場合・遅らせた場合の年金額、受給総額、損益分岐年齢を計算します。お住まいの市町村（青森県内15市町村）を選ぶと、所得税・住民税と国民健康保険税・後期高齢者医療保険料・介護保険料を差し引いた手取りでも比較できます。</p>
+  <div class="caution" role="note"><span class="ic" aria-hidden="true">!</span><div>この試算結果は<b>あくまでも参考値</b>です。実際の年金額・税額・保険料は、加入記録や世帯の状況、今後の制度改正などにより異なります。受給開始時期を決める際は、年金事務所や市町村の窓口で正確な金額をご確認ください。</div></div>
+</header>
+
+<div class="grid">
+<section class="panel" id="inPanel" aria-labelledby="h-in">
+  <h2 id="h-in"><span class="no c-blue">入力</span>ご本人の情報</h2>
+  <div class="form">
+    <div class="field">
+      <label class="chk" for="early62"><input type="checkbox" id="early62"><span>昭和37年4月1日以前に生まれた方はチェック<small>1962年4月1日以前に生まれた方です。繰上げの減額率が変わります（繰下げの計算は変わりません）。</small></span></label>
+      <div class="cat" id="catBox"></div>
+    </div>
+    <div class="field">
+      <span class="lbl" id="unitLbl">年金額の入力方法</span>
+      <div class="seg" role="group" aria-labelledby="unitLbl">
+        <button type="button" id="uY" aria-pressed="true">年額で入力</button>
+        <button type="button" id="uM" aria-pressed="false">月額で入力</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="kiso">老齢基礎年金（65歳から受け取る場合の<span class="uName">年額</span>）</label>
+      <div class="yen"><input type="number" id="kiso" value="847300" min="0" step="1000" inputmode="numeric"><span class="uUnit">円／年</span></div>
+      <div class="hint conv" id="kisoConv"></div>
+    </div>
+    <div class="field">
+      <label for="kosei">老齢厚生年金（65歳から受け取る場合の<span class="uName">年額</span>）</label>
+      <div class="yen"><input type="number" id="kosei" value="1000000" min="0" step="1000" inputmode="numeric"><span class="uUnit">円／年</span></div>
+      <div class="hint conv" id="koseiConv"></div>
+      <div class="hint">老齢基礎年金の初期値は、令和8年度の満額（20歳から60歳までの40年間すべて保険料を納めた場合）の847,300円です。老齢厚生年金の初期値は例です。ねんきん定期便の「老齢年金の種類と見込額（年額）」の表で、「65歳〜」の列の金額を、「年額で入力」のまま入力してください。厚生年金が「一般厚生年金期間」「公務員厚生年金期間」などに分かれている場合は合計します。厚生年金がない方は0円にします。</div>
+    </div>
+    <div class="field">
+      <span class="lbl" id="modeLbl">受給開始の決め方</span>
+      <div class="seg" role="group" aria-labelledby="modeLbl">
+        <button type="button" id="mSame" aria-pressed="true">基礎・厚生を同時に</button>
+        <button type="button" id="mSep" aria-pressed="false">別々に繰下げ</button>
+      </div>
+    </div>
+    <div class="field" id="fA">
+      <span class="lbl" id="lblA">受給開始年齢</span>
+      <div class="age"><select id="ayA" aria-labelledby="lblA"></select><span>歳</span><select id="amA" aria-label="か月"></select><span>か月</span></div>
+    </div>
+    <div class="field" id="fB" hidden>
+      <span class="lbl" id="lblB">老齢厚生年金の受給開始年齢</span>
+      <div class="age"><select id="ayB" aria-labelledby="lblB"></select><span>歳</span><select id="amB" aria-label="か月"></select><span>か月</span></div>
+    </div>
+    <div class="msg" id="msg" hidden></div>
+    <div class="field">
+      <label for="life">想定する年齢（何歳まで受け取るか）：<span id="lifeV"></span>歳</label>
+      <input type="range" id="life" min="66" max="100" value="90">
+    </div>
+
+    <div class="field sep">
+      <button type="button" class="taxbtn" id="taxBtn" aria-expanded="false" aria-controls="taxBox"><span class="pm" aria-hidden="true">＋</span><span id="taxBtnT">税金・保険料を考慮する（目安）</span></button>
+      <div class="hint" id="taxHint">初期設定は、税金・保険料を差し引かない額面での計算です。</div>
+    </div>
+    <div class="taxbox" id="taxBox" hidden>
+    <div class="field">
+      <span class="lbl">差し引くもの（チェックを外すと額面で計算）</span>
+      <label class="chk" for="cTax"><input type="checkbox" id="cTax"><span>所得税・住民税<small>復興特別所得税を含みます</small></span></label>
+      <label class="chk" for="cIns"><input type="checkbox" id="cIns"><span>社会保険料<small>国民健康保険税（74歳まで）、後期高齢者医療保険料（75歳から）、介護保険料</small></span></label>
+    </div>
+    <div class="field" id="fMuni">
+      <label for="muni">お住まいの市町村</label>
+      <select id="muni"></select>
+      <div class="flag" id="muniFlag" hidden></div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<div class="results">
+  <div><span class="mode" id="modeTag"></span></div>
+  <section class="hero" id="hero" aria-labelledby="heroK">
+    <div class="hero-top"><span class="hero-k" id="heroK"></span><span class="inline" id="heroAge"><label for="bdAge">年齢</label><select id="bdAge"></select>歳のとき</span></div>
+    <div class="hero-v" id="heroV"></div>
+    <div class="hero-s" id="heroS"></div>
+  </section>
+  <div class="sum" id="sum"></div>
+  <div class="verdict" id="verdict"></div>
+
+  <section class="panel chart" aria-labelledby="h-ch">
+    <h2 id="h-ch"><span class="no c-purple">図</span><span id="chTitle">受給累計額の推移（65歳受給との比較）</span></h2>
+    <div class="legend"><span><i id="lgC"></i>選んだ開始年齢</span><span><i style="background:var(--base)"></i>65歳から受給</span><span id="lgGain"><i class="sw" style="background:var(--green)"></i>選んだ開始年齢の方が多い期間</span><span id="lgLoss"><i class="sw" style="background:var(--orange)"></i>65歳受給の方が多い期間</span></div>
+    <div id="chart"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-bd" id="secBd">
+    <h2 id="h-bd"><span class="no c-orange">表1</span>1年分の内訳
+      <span class="inline" id="bdAgeTxt"></span></h2>
+    <p class="swipe">表は横にスクロールできます →</p><div class="tbl"><table id="tBd"></table></div>
+    <p class="hint" style="margin:8px 0 0" id="bdNote"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-t1">
+    <h2 id="h-t1"><span class="no c-green">表2</span><span id="t1Title">年齢ごとの受給累計額</span></h2>
+    <p class="swipe">表は横にスクロールできます →</p><div class="tbl"><table id="t1"></table></div>
+    <p class="hint t1note" id="t1Note" hidden>※ 繰下げ待機中も国民健康保険税・介護保険料がかかるため、年金を受け取り始める前は、手取りの累計額がマイナスになることがあります。</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-t2">
+    <h2 id="h-t2"><span class="no c-pink">表3</span>受給開始年齢ごとの比較（基礎・厚生を同時に開始）</h2>
+    <p class="hint" style="margin:-6px 0 10px">黄色は、想定する年齢までの受給総額が最も多い開始年齢です。行を押すとその年齢で試算し直します。</p>
+    <p class="swipe">表は横にスクロールできます →</p><div class="tbl"><table id="t2"></table></div>
+  </section>
+
+  <section class="panel notes" aria-labelledby="h-n">
+    <h2 id="h-n"><span class="no">注</span>計算の前提と注意点</h2>
+    <ul>
+      <li><b>増減率</b>：繰下げは1か月につき0.7%増額（66歳0か月から、上限75歳で84%）。繰上げは1か月につき0.4%減額（昭和37年4月1日以前生まれは0.5%）。昭和27年4月1日以前生まれの方（繰下げの上限70歳）は、すでに受給開始の時期を過ぎているため対象外としています。</li>
+      <li><b>支給の始まり</b>：年金は受給開始年齢に到達した月の翌月分から支給される前提で、月割りで累計しています。法律上の年齢到達日は誕生日の前日のため、1日生まれの方は誕生月の前月が到達月になります。</li>
+      <li><b>手取りの計算の前提</b>：単身世帯で、収入は老齢年金のみと仮定しています。配偶者の収入、給与・事業収入、医療費控除などは考慮していません。税・保険料は「その年齢の1年間の年金収入」に対してかかるものとして計算しています（実際は前年の所得で決まり、暦年で区切られます）。</li>
+      <li><b>税制</b>：2026年（令和8年分）の所得税、2026年度の住民税の制度が将来も続くと仮定しています。所得税の基礎控除は令和8年分の特例を含みます（合計所得489万円以下は104万円）。この特例は令和9年分までの時限措置で、令和10年分以後は控除額が下がる予定です。復興特別所得税（2.1%）は2037年分までですが、全期間に含めています。</li>
+      <li><b>保険料</b>：国民健康保険税・介護保険料は選んだ市町村の2026年度（令和8年度）の税率・段階表、後期高齢者医療保険料は青森県の令和8・9年度の保険料率（県内均一）を使っています。子ども・子育て支援金分を含みます。保険料率は将来も変わらないと仮定しています。65歳以上は年金がなくても国保・介護保険料（均等割など）がかかるため、繰下げ待機中も保険料を差し引いています。60〜64歳で繰上げた場合は、年金を受け取ることで増える国保税だけを差し引いています（会社の健康保険に加入している場合は異なります）。</li>
+      <li><b>含まれないもの</b>：加給年金・振替加算は繰下げても増額されず、繰下げ待機中は受け取れません。在職老齢年金による支給停止分は増額の対象外です。特別支給の老齢厚生年金、物価・賃金による毎年の年金額改定も反映していません。</li>
+      <li><b>繰上げのルール</b>：繰上げは老齢基礎年金と老齢厚生年金を同時に請求する必要があり、一度決めた減額率は生涯続きます。障害年金や寡婦年金が受けられなくなるなどの制約もあります。</li>
+      <li><b>70歳以降の請求</b>：繰下げ待機中に一括受給を選ぶと、請求の5年前に繰下げ申出があったとみなして増額された年金が支給されます（令和5年4月施行の特例。80歳以降の請求などは対象外）。</li>
+      <li><b>対象の市町村</b>：国民健康保険税の令和8年度税率を市町村の公式情報（ホームページ・条例）で確認でき、介護保険料の段階表も確認できた15市町村です。その他の市町村は、確認がとれしだい追加します。</li>
+      <li><b>この試算結果はあくまでも参考値です。</b>正確な金額は、年金事務所・市町村の窓口でご確認ください。参考：<a href="https://www.nenkin.go.jp/service/jukyu/roureinenkin/kuriage-kurisage/index.html" target="_blank" rel="noopener">日本年金機構「老齢基礎年金の繰上げ・繰下げ」</a>、<a href="https://www.mhlw.go.jp/content/12403500/001689077.pdf" target="_blank" rel="noopener">厚生労働省「後期高齢者医療制度の令和8・9年度の保険料率」</a>、<a href="https://www.mhlw.go.jp/content/12303500/001253798.pdf" target="_blank" rel="noopener">厚生労働省「第9期介護保険料 保険者別一覧」</a>、<a href="https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/20251226taikou.pdf" target="_blank" rel="noopener">財務省「令和8年度税制改正の大綱」</a></li>
+    </ul>
+  </section>
+</div>
+</div>
+</div>
+
+<nav class="tabbar" aria-label="画面の切り替え">
+  <div class="mini" id="mini"></div>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabIn" aria-selected="true">入力</button>
+    <button type="button" role="tab" id="tabOut" aria-selected="false">結果を見る</button>
+  </div>
+</nav>
+
+<script>
+const STD_KAIGO=[[0.285, 0.485, 0.685, 0.9, 1.0, 1.2, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.4], [120, 210, 320, 420, 520, 620, 720]];
+const MUNI=[{"n":"青森市","kc":{"i":[0.0941,18640,23820,670000],"s":[0.0246,6360,7680,260000],"k":[0.0274,9260,4540,170000],"c":[0.003,1400,900,30000]},"kv":"official","kb":81890,"km":[[0.285,0.485,0.685,0.85,1.0,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5],[120,210,320,400,600,800,1000]],"gv":true,"q":2},{"n":"弘前市","kc":{"i":[0.074,21400,21000,670000],"s":[0.032,8600,7600,260000],"k":[0.034,10400,6000,170000],"c":[0.004,1078,1600,30000]},"kv":"official","kb":83170,"km":[[0.285,0.485,0.685,0.875,1.0,1.15,1.3,1.6,1.8,2.1,2.2,2.3,2.4,2.5,2.6],[125,190,320,400,500,600,700,800,1000]],"gv":true,"q":3},{"n":"八戸市","kc":{"i":[0.077,21640,24160,670000],"s":[0.024,7000,8000,260000],"k":[0.023,8000,9000,170000],"c":[0.003,1360,840,30000]},"kv":"official","kb":69600,"km":[[0.285,0.485,0.685,0.85,1.0,1.2,1.3,1.5,1.7,1.9,2.1,2.3,2.4,2.5,2.7],[120,210,320,420,520,620,720,820,1000]],"gv":true,"q":3},{"n":"黒石市","kc":{"i":[0.081,23110,22131,670000],"s":[0.019,6700,5800,260000],"k":[0.018,8700,5100,170000],"c":[0.003,1390,869,30000]},"kv":"official","kb":79800,"km":null,"gv":true,"q":3},{"n":"五所川原市","kc":{"i":[0.0696,24100,20900,670000],"s":[0.0221,7400,6400,260000],"k":[0.0202,9400,5500,170000],"c":[0.0025,1230,500,30000]},"kv":"official","kb":82800,"km":null,"gv":true,"q":3},{"n":"十和田市","kc":{"i":[0.068,23000,19500,670000],"s":[0.029,10100,8400,260000],"k":[0.025,12100,7800,170000],"c":[0.003,1370,800,30000]},"kv":"official","kb":85800,"km":[[0.285,0.485,0.685,0.9,1.0,1.2,1.3,1.6,1.7,1.9,2.0,2.2,2.3,2.4],[120,200,300,400,500,600,700,800]],"gv":true,"q":3},{"n":"三沢市","kc":{"i":[0.077,23800,30000,670000],"s":[0.03,8000,9500,260000],"k":[0.023,10000,7000,170000],"c":[0.003,1280,800,30000]},"kv":"official","kb":80400,"km":[[0.285,0.485,0.685,0.9,1.0,1.1,1.2,1.3,1.5,1.7,1.9,2.1,2.3,2.4],[40,120,210,320,420,520,620,720]],"gv":true,"q":3},{"n":"むつ市","kc":{"i":[0.0751,20700,31600,670000],"s":[0.0301,8300,13300,260000],"k":[0.0304,13900,7000,170000],"c":[0.004,1068,1300,30000]},"kv":"official","kb":84000,"km":null,"gv":false,"q":3},{"n":"つがる市","kc":{"i":[0.0475,24000,22800,670000],"s":[0.0192,10800,7200,260000],"k":[0.0169,12000,6000,170000],"c":[0.0015,1440,840,30000]},"kv":"official","kb":87600,"km":null,"gv":true,"q":3},{"n":"平川市","kc":{"i":[0.075,18400,20800,670000],"s":[0.029,7400,8100,260000],"k":[0.0285,9500,7700,170000],"c":[0.003,1400,800,30000]},"kv":"official","kb":85200,"km":null,"gv":true,"q":3},{"n":"平内町","kc":{"i":[0.09,25000,27800,670000],"s":[0.037,7900,8700,260000],"k":[0.029,8500,6000,170000],"c":[0.003,1400,900,30000]},"kv":"official","kb":70800,"km":null,"gv":false,"q":3},{"n":"今別町","kc":{"i":[0.06,15600,21600,670000],"s":[0.06,12000,12000,260000],"k":[0.01,6700,10000,170000],"c":[0.003,1400,900,30000]},"kv":"third","kb":72000,"km":null,"gv":false,"q":3},{"n":"蓬田村","kc":{"i":[0.09,25200,24600,670000],"s":[0.02,12000,8000,260000],"k":[0.02,9000,6000,170000],"c":[0.003,1400,800,30000]},"kv":"third","kb":81600,"km":null,"gv":false,"q":3},{"n":"外ヶ浜町","kc":{"i":[0.102,27600,36000,670000],"s":[0.02,5400,7800,260000],"k":[0.0166,6000,8400,170000],"c":[0.0029,1362,848,30000]},"kv":"official","kb":82800,"km":null,"gv":false,"q":3},{"n":"鰺ヶ沢町","kc":{"i":[0.086,25000,0,670000],"s":[0.03,8400,0,260000],"k":[0.024,9200,0,170000],"c":[0.003,1383,862,30000]},"kv":"third","kb":76800,"km":null,"gv":false,"q":3},{"n":"深浦町","kc":{"i":[0.0809,22000,24000,670000],"s":[0.0237,6600,6600,260000],"k":[0.0202,8600,4600,170000],"c":[0.003,1440,800,30000]},"kv":"official","kb":76800,"km":null,"gv":false,"q":3},{"n":"西目屋村","kc":{"i":[0.085,24000,28000,670000],"s":[0.028,7800,8400,260000],"k":[0.024,6900,7200,170000],"c":[0.0025,1375,780,30000]},"kv":"third","kb":85200,"km":null,"gv":false,"q":3},{"n":"藤崎町","kc":{"i":[0.09,24300,19300,670000],"s":[0.028,7800,6000,260000],"k":[0.024,8700,4500,170000],"c":[0.0025,1100,700,30000]},"kv":"official","kb":81600,"km":null,"gv":true,"q":3},{"n":"大鰐町","kc":{"i":[0.072,20000,24000,670000],"s":[0.029,9800,9800,260000],"k":[0.028,9800,9800,170000],"c":[0.003,1100,800,30000]},"kv":"third","kb":80400,"km":null,"gv":false,"q":3},{"n":"田舎館村","kc":{"i":[0.079,22300,27000,670000],"s":[0.025,8000,7000,260000],"k":[0.021,10000,6500,170000],"c":[0.002,960,800,30000]},"kv":"third","kb":74400,"km":null,"gv":false,"q":3},{"n":"板柳町","kc":{"i":[0.058,22600,22100,670000],"s":[0.033,10100,9900,260000],"k":[0.0195,9000,5500,170000],"c":[0.003,1390,900,30000]},"kv":"official","kb":82800,"km":[[0.29,0.485,0.69,0.9,1.0,1.2,1.3,1.5,1.7,1.8,1.9,2.0,2.1],[120,210,320,420,520,620,720]],"gv":true,"q":3},{"n":"鶴田町","kc":{"i":[0.083,27600,0,670000],"s":[0.023,7200,0,260000],"k":[0.024,8400,0,170000],"c":[0.003,1400,0,30000]},"kv":"official","kb":80400,"km":null,"gv":false,"q":3},{"n":"中泊町","kc":{"i":[0.085,9900,0,670000],"s":[0.0275,4800,0,260000],"k":[0.0249,6000,0,170000],"c":[0.003,1418,875,30000]},"kv":"official","kb":86400,"km":null,"gv":true,"q":3},{"n":"野辺地町","kc":{"i":[0.0826,28100,27400,670000],"s":[0.0218,5100,10700,260000],"k":[0.0066,6900,3100,170000],"c":[0.0029,1350,800,30000]},"kv":"official","kb":76800,"km":null,"gv":false,"q":3},{"n":"七戸町","kc":{"i":[0.0625,27000,22000,670000],"s":[0.026,11000,8000,260000],"k":[0.0255,14000,6000,170000],"c":[0.0025,1030,500,30000]},"kv":"official","kb":94800,"km":null,"gv":true,"q":3},{"n":"六戸町","kc":{"i":[0.085,28000,32000,670000],"s":[0.027,11000,10000,260000],"k":[0.023,12000,7000,170000],"c":[0.0026,1172,742,30000]},"kv":"official","kb":74520,"km":null,"gv":false,"q":3},{"n":"横浜町","kc":{"i":[0.075,30000,20000,670000],"s":[0.029,12000,8000,260000],"k":[0.026,12000,7000,170000],"c":[0.003,1390,900,30000]},"kv":"official","kb":80400,"km":null,"gv":false,"q":3},{"n":"東北町","kc":{"i":[0.075,31000,22000,670000],"s":[0.032,13000,9000,260000],"k":[0.02,12100,6800,170000],"c":[0.0024,1050,600,30000]},"kv":"official","kb":94560,"km":null,"gv":true,"q":3},{"n":"六ヶ所村","kc":{"i":[0.076,33000,23000,670000],"s":[0.027,9600,8000,260000],"k":[0.023,9000,6500,170000],"c":[0.003,1350,800,30000]},"kv":"official","kb":92400,"km":null,"gv":true,"q":3},{"n":"おいらせ町","kc":{"i":[0.0745,31600,21600,670000],"s":[0.027,11400,7800,260000],"k":[0.023,13800,6800,170000],"c":[0.003,1280,800,30000]},"kv":"official","kb":76800,"km":null,"gv":true,"q":3},{"n":"大間町","kc":{"i":[0.08,22000,40000,670000],"s":[0.02,8000,5500,260000],"k":[0.0144,13500,5500,170000],"c":[0.0013,550,350,30000]},"kv":"official","kb":88800,"km":null,"gv":false,"q":3},{"n":"東通村","kc":{"i":[0.079,24000,23000,670000],"s":[0.027,8400,8000,260000],"k":[0.023,9800,6000,170000],"c":[0.003,1370,800,30000]},"kv":"none","kb":93600,"km":null,"gv":false,"q":3},{"n":"風間浦村","kc":{"i":[0.08,24000,37200,670000],"s":[0.018,9600,5000,260000],"k":[0.02,13200,2000,170000],"c":[0.003,1400,900,30000]},"kv":"official","kb":85200,"km":null,"gv":false,"q":3},{"n":"佐井村","kc":{"i":[0.096,25200,30000,670000],"s":[0.032,12000,5000,260000],"k":[0.03,13200,2000,170000],"c":[0.003,1500,900,30000]},"kv":"official","kb":86400,"km":null,"gv":false,"q":3},{"n":"三戸町","kc":{"i":[0.078,25400,22000,670000],"s":[0.028,8800,7600,260000],"k":[0.025,10200,5400,170000],"c":[0.003,1384,863,30000]},"kv":"official","kb":90120,"km":null,"gv":false,"q":3},{"n":"五戸町","kc":{"i":[0.084,27000,27000,670000],"s":[0.024,10000,8000,260000],"k":[0.018,12000,7000,170000],"c":[0.003,1200,700,30000]},"kv":"official","kb":82800,"km":null,"gv":true,"q":3},{"n":"田子町","kc":{"i":[0.075,23500,17100,670000],"s":[0.0264,7700,5900,260000],"k":[0.0234,9800,4900,170000],"c":[0.003,1396,868,30000]},"kv":"official","kb":84000,"km":null,"gv":false,"q":3},{"n":"南部町","kc":{"i":[0.083,15000,28000,670000],"s":[0.018,8000,8000,260000],"k":[0.018,12000,7000,170000],"c":[0.003,1380,900,30000]},"kv":"official","kb":81600,"km":null,"gv":true,"q":3},{"n":"階上町","kc":{"i":[0.07,21700,20200,670000],"s":[0.027,9000,8000,260000],"k":[0.024,10000,6000,170000],"c":[0.003,1360,800,30000]},"kv":"official","kb":76800,"km":null,"gv":false,"q":3},{"n":"新郷村","kc":{"i":[0.083,24500,27000,660000],"s":[0.026,9000,8500,260000],"k":[0.024,10000,7500,170000],"c":[0.003,1290,850,30000]},"kv":"r7","kb":79200,"km":null,"gv":false,"q":3}];
+const $=id=>document.getElementById(id);
+const BASE=780; // 65歳 = 780か月
+const yen=n=>Math.round(n).toLocaleString('ja-JP');
+const man=n=>(Math.round(n/1000)/10).toLocaleString('ja-JP',{minimumFractionDigits:1,maximumFractionDigits:1});
+const ageTxt=m=>Math.floor(m/12)+'歳'+(m%12?(m%12)+'か月':'');
+const fl=(n,u)=>Math.floor(n/u)*u;
+let sep=false;
+
+/* ---------- 制度ルール（年金） ---------- */
+function category(){
+  if($('early62').checked)return{maxM:900,early:0.005,txt:'昭和37年4月1日以前生まれ：繰下げは75歳まで（最大84%増）、繰上げは1か月0.5%減'};
+  return{maxM:900,early:0.004,txt:'昭和37年4月2日以降生まれ：繰下げは75歳まで（最大84%増）、繰上げは1か月0.4%減'};
+}
+function rate(startM,cat){const m=startM-BASE;return m<0?m*cat.early:0.007*m}
+
+/* ---------- 税（2026年分の制度、単身・年金収入のみ） ---------- */
+function nenkinKojo(G,age){
+  if(age>=65){if(G<3300000)return 1100000;}
+  else{if(G<1300000)return 600000;}
+  if(G<4100000)return G*0.25+275000;
+  if(G<7700000)return G*0.15+685000;
+  if(G<10000000)return G*0.05+1455000;
+  return 1955000;
+}
+function shotoku(G,age){return G<=0?0:Math.max(0,Math.floor(G-nenkinKojo(G,age)))}
+function kisoKojoIT(inc){ // 所得税 基礎控除（令和8年分、特例含む）
+  if(inc<=4890000)return 1040000; if(inc<=6550000)return 670000;
+  if(inc<=23500000)return 620000; if(inc<=24000000)return 480000;
+  if(inc<=24500000)return 320000; if(inc<=25000000)return 160000; return 0;
+}
+function incomeTax(inc,shaho){
+  const t=Math.max(0,fl(inc-kisoKojoIT(inc)-shaho,1000));
+  const br=[[1950000,.05,0],[3300000,.10,97500],[6950000,.20,427500],[9000000,.23,636000],[18000000,.33,1536000],[40000000,.40,2796000],[Infinity,.45,4796000]];
+  const b=br.find(x=>t<=x[0]);const tax=t*b[1]-b[2];
+  return fl(Math.max(0,tax)*1.021,100);
+}
+function hikazeiLine(q){return q===2?415000:380000} // 単身の均等割非課税（2級地／3級地）
+function residentTax(inc,shaho,q){
+  if(inc<=hikazeiLine(q))return 0;
+  let tax=5000; // 均等割（県1,000＋市町村3,000＋森林環境税1,000）
+  if(inc>450000){
+    const t=Math.max(0,fl(inc-430000-shaho,1000));
+    let adj=t<=2000000?Math.min(50000,t)*0.05:Math.max((50000-(t-2000000))*0.05,2500);
+    if(t===0)adj=0;
+    tax+=fl(Math.max(0,t*0.10-adj),100);
+  }
+  return tax;
+}
+
+/* ---------- 保険料（2026年度） ---------- */
+function keigenRatio(inc,age){ // 均等割・平等割の軽減（単身・1人世帯）
+  const j=Math.max(0,inc-(age>=65?150000:0));
+  if(j<=430000)return .7; if(j<=740000)return .5; if(j<=1000000)return .2; return 0;
+}
+function kokuho(inc,age,M){
+  const base=Math.max(0,inc-430000),r=keigenRatio(inc,age);
+  const parts=['i','s','c'].concat(age<65?['k']:[]);
+  let sum=0;for(const p of parts){const [rt,ki,by,lim]=M.kc[p];sum+=Math.min(lim,base*rt+(ki+by)*(1-r))}
+  return fl(sum,100);
+}
+function kouki(inc,age){
+  const base=Math.max(0,inc-430000),r=keigenRatio(inc,age);
+  const rm=r===.7?.72:r; // 令和8年度は医療分の7割軽減が7.2割
+  const med=Math.min(850000,fl(50500*(1-rm),10)+base*0.09);
+  const ch=Math.min(21000,1300*(1-r)+base*0.002);
+  return fl(med,100)+fl(ch,100);
+}
+function kaigoStage(G,inc,M){
+  const taxed=inc>hikazeiLine(M.q);
+  if(!taxed){if(G<=826500)return 1;if(G<=1200000)return 2;return 3}
+  const [, b]=M.km||STD_KAIGO;
+  return 6+b.filter(x=>inc>=x*10000).length;
+}
+function kaigo(G,inc,M){
+  const [mult]=M.km||STD_KAIGO;const s=kaigoStage(G,inc,M);
+  return {stage:s,amt:fl(M.kb*mult[s-1],100)};
+}
+// 1年分の内訳。age=その1年間の年齢、G=その1年間の年金収入
+function yearDetail(G,age,M,opt){
+  const inc=shotoku(G,age);
+  let hoken=0,kai=0,hokenName='国民健康保険税',stage=null;
+  if(opt.ins){
+    if(age>=75){hoken=kouki(inc,age);hokenName='後期高齢者医療保険料'}
+    else if(age>=65){hoken=kokuho(inc,age,M)}
+    else{hoken=G>0?Math.max(0,kokuho(inc,age,M)-kokuho(0,age,M)):0}
+    if(age>=65){const k=kaigo(G,inc,M);kai=k.amt;stage=k.stage}
+  }
+  const shaho=hoken+kai;
+  const it=opt.tax?incomeTax(inc,shaho):0, rt=opt.tax?residentTax(inc,shaho,M.q):0;
+  return{G,inc,it,rt,hoken,kai,hokenName,stage,net:G-it-rt-hoken-kai};
+}
+
+/* ---------- 入力の補正 ---------- */
+function fillSel(yEl,mEl,minY,maxY,y,m){
+  yEl.innerHTML='';for(let a=minY;a<=maxY;a++)yEl.add(new Option(a,a));
+  mEl.innerHTML='';for(let a=0;a<12;a++)mEl.add(new Option(a,a));
+  yEl.value=Math.min(Math.max(y,minY),maxY);mEl.value=m;
+}
+function readAge(yEl,mEl){return(+yEl.value)*12+(+mEl.value)}
+function setAge(yEl,mEl,M){yEl.value=Math.floor(M/12);mEl.value=M%12}
+function startMonth(M){return ageTxt(M)+'に到達した月の翌月分から'}
+function normalize(M,cat,allowEarly){
+  const notes=[];
+  if(M<720)M=720;
+  if(!allowEarly&&M<BASE){M=BASE;notes.push('「別々に繰下げ」では繰上げは選べません（繰上げは基礎・厚生を同時に請求します）。65歳に補正しました。');}
+  if(M>BASE&&M<792){notes.push('繰下げは66歳0か月から申し出られます。65歳1か月〜65歳11か月は選べないため、66歳0か月に補正しました。');M=792;}
+  if(M>cat.maxM){notes.push('生年月日により繰下げの上限は'+cat.maxM/12+'歳です。上限に補正しました。');M=cat.maxM;}
+  return{M,notes};
+}
+
+/* ---------- シナリオ計算 ---------- */
+const T0=720,T1=1440; // 60歳〜120歳（月）
+function scenario(st,kiso,kosei,cat,M,opt){
+  const comps=[[kiso,st[0]],[kosei,st[1]]].map(([a,s])=>({a,s,mo:a/12*(1+rate(s,cat))}));
+  const startAge=Math.min(...st,BASE);
+  const net=opt.tax||opt.ins;
+  const years={},cum=new Float64Array(T1-T0+1);let c=0;
+  for(let y=60;y<120;y++){
+    let G=0;for(const p of comps){const n=Math.max(0,Math.min(12,(y+1)*12-Math.max(p.s,y*12)));G+=p.mo*n}
+    // 65歳以上は年金がなくても保険料がかかる。60〜64歳は年金がある年のみ
+    const d=(net&&(y>=65||G>0))?yearDetail(G,y,M,opt):{G,net:G};
+    years[y]=d;
+    for(let m=0;m<12;m++){const t=y*12+m;cum[t-T0]=c;
+      let g=0;for(const p of comps)if(t>=p.s)g+=p.mo;
+      c+= net?(G>0?d.net*g/G:d.net/12):g;}
+  }
+  cum[T1-T0]=c;
+  const annual=comps.reduce((s,p)=>s+Math.round(p.a*(1+rate(p.s,cat))),0);
+  return{years,cum,annual,startAge,at:t=>cum[Math.max(0,Math.min(T1,t))-T0]};
+}
+function breakEven(S,B){
+  // 両方の受給が始まった後の差の符号を基準に、逆転する最初の月を探す
+  const ref=Math.max(...[S.lastStart,BASE])+1;
+  const sign=Math.sign(S.at(ref)-B.at(ref));
+  if(!sign)return null;
+  for(let t=ref;t<=T1;t++){const d=S.at(t)-B.at(t);if(sign<0&&d>=-1)return t;if(sign>0&&d<=1)return t}
+  return null;
+}
+
+/* ---------- 画面 ---------- */
+function opts(){return{tax:$('cTax').checked,ins:$('cIns').checked}}
+function muni(){return MUNI.find(m=>m.n===$('muni').value)||MUNI[0]}
+
+function calc(){
+  const cat=category();$('catBox').textContent=cat.txt;
+  // 入力欄の数字が変わっていれば年額に直して保存（月額入力のときは12倍）
+  for(const id of ['kiso','kosei']){const v=Math.max(0,+$(id).value||0),shown=unitM?Math.round(ANN[id]/12):ANN[id];if(v!==shown)ANN[id]=unitM?v*12:v;}
+  const kiso=ANN.kiso,kosei=ANN.kosei,base=kiso+kosei;
+  const conv=v=>v?(unitM?'年額にすると '+yen(v)+'円':'月額にすると 約'+yen(v/12)+'円'):'';
+  $('kisoConv').textContent=conv(kiso);$('koseiConv').textContent=conv(kosei);
+  let nA=normalize(readAge($('ayA'),$('amA')),cat,!sep);setAge($('ayA'),$('amA'),nA.M);
+  let notes=[...nA.notes];let sA=nA.M,sB=sA;
+  if(sep){const nB=normalize(readAge($('ayB'),$('amB')),cat,false);setAge($('ayB'),$('amB'),nB.M);sB=nB.M;notes.push(...nB.notes);}
+  $('msg').hidden=!notes.length;$('msg').textContent=notes.join(' ');
+  const o=opts(),net=o.tax||o.ins,M=muni();
+  $('fMuni').hidden=!net;
+  const fl_=[];if(M.kv==='third')fl_.push('国保税率は町村の公式ページで確認できず、青森県の一覧の写しから取っています。');
+  if(M.kv==='r7')fl_.push('国保税は医療分・支援金分・介護分が令和7年度の税率です（子ども・子育て支援金分は令和8年度）。');
+  if(M.kv==='none')fl_.push('国保税率を確認できなかったため、県内市町村の中央値で概算しています。');
+  if(!M.gv)fl_.push('介護保険料は基準額のみ確認済みで、段階表は全国標準と仮定しています。');
+  $('muniFlag').hidden=!(net&&fl_.length);$('muniFlag').textContent=fl_.join(' ');
+  $('modeTag').textContent=net?('手取りで比較：'+[o.tax?'所得税・住民税':'',o.ins?'社会保険料':''].filter(Boolean).join('・')+'を差し引き（'+M.n+'）'):'額面で比較（税・保険料を差し引かない）';
+  $('modeTag').className='mode'+(net?'':' gross');
+  const life=+$('life').value;$('lifeV').textContent=life;const T=life*12;
+
+  const S=scenario([sA,sB],kiso,kosei,cat,M,o);S.lastStart=Math.max(sA,sB);
+  const B=scenario([BASE,BASE],kiso,kosei,cat,M,o);B.lastStart=BASE;
+  const be=(S.annual!==base&&base>0)?breakEven(S,B):null;
+  // 額面の損益分岐（参考）
+  const og={tax:false,ins:false};
+  const Sg=scenario([sA,sB],kiso,kosei,cat,M,og);Sg.lastStart=Math.max(sA,sB);
+  const Bg=scenario([BASE,BASE],kiso,kosei,cat,M,og);Bg.lastStart=BASE;
+  const beG=(S.annual!==base&&base>0)?breakEven(Sg,Bg):null;
+
+  const early=Math.min(sA,sB)<BASE;
+  const pct=base?(S.annual/base-1)*100:0,cls=pct>0?'pos':pct<0?'neg':'';
+  const bdA=+$('bdAge').value;
+  const yS=S.years[bdA],yB=B.years[bdA];
+  const netPct=yB.net>0?(yS.net/yB.net-1)*100:null;
+  // 手取りの大きな表示
+  const hero=$('hero');hero.className='hero'+(net?'':' gross');$('heroAge').hidden=!net;
+  if(net){
+    $('heroK').textContent='手取り（1か月あたり）';
+    $('heroV').innerHTML=(yS.net<0?'−':'')+yen(Math.abs(yS.net/12))+'<small>円</small>';
+    const dd=(yS.net-yB.net)/12;
+    $('heroS').innerHTML=(yS.G>0
+      ?`<span class="chip">額面 ${yen(yS.G/12)}円</span><span class="chip ded">税・保険料 −${yen((yS.G-yS.net)/12)}円</span>`
+      :`<span class="chip">繰下げ待機中のため年金はなく、保険料のみかかります</span>`)+
+      `<span class="chip cmp">65歳から受給した場合の手取り ${yen(yB.net/12)}円（差 <b class="${dd>=0?'pos':'neg'}">${dd>=0?'+':'−'}${yen(Math.abs(dd))}円</b>）</span>`;
+  }else{
+    $('heroK').textContent='年金額（1か月あたり・額面）';
+    $('heroV').innerHTML=yen(S.annual/12)+'<small>円</small>';
+    const dd=(S.annual-base)/12;
+    $('heroS').innerHTML=`<span class="chip">年額 ${yen(S.annual)}円</span><span class="chip cmp">65歳から受給した場合 ${yen(base/12)}円（差 <b class="${dd>=0?'pos':'neg'}">${dd>=0?'+':'−'}${yen(Math.abs(dd))}円</b>）</span>`;
+  }
+  if(sA===BASE&&sB===BASE){const c=$('heroS').querySelector('.cmp');if(c)c.outerHTML='<span class="chip">受給開始年齢を変えると、65歳から受給した場合と比べられます</span>';}
+  $('sum').innerHTML=
+    `<div><div class="k">受給開始</div><div class="v">${sep&&sA!==sB?'別々':ageTxt(sA)}</div><div class="s">${sep&&sA!==sB?'基礎 '+ageTxt(sA)+'／厚生 '+ageTxt(sB):startMonth(sA)}</div></div>`+
+    `<div><div class="k">年金額（額面・月額）</div><div class="v">${yen(S.annual/12)}<small>円</small></div><div class="s">年額 ${yen(S.annual)}円</div></div>`+
+    `<div><div class="k">65歳受給との差（額面）</div><div class="v ${cls}">${pct>0?'+':''}${pct.toFixed(1)}<small>%</small></div><div class="s">${net&&netPct!==null&&yS.G>0?'手取りでは '+(netPct>0?'+':'')+netPct.toFixed(1)+'%（'+bdA+'歳）':'月額 '+(S.annual-base>=0?'+':'')+yen((S.annual-base)/12)+'円'}</div></div>`+
+    `<div><div class="k">損益分岐年齢${net?'（手取り）':''}</div><div class="v">${be?ageTxt(be):(S.annual===base?'—':'なし')}</div><div class="s">${net?(beG?'額面では '+ageTxt(beG):'—'):(be?'この月に累計額が逆転':'65歳受給と同じ')}</div></div>`;
+
+  const v=$('verdict');v.className='verdict'+(early?' early':'');
+  const lbl=net?'手取りの受給総額':'受給総額';
+  const cS=S.at(T),cB=B.at(T),dL=cS-cB;
+  if(S.annual===base){v.innerHTML=`65歳から受け取る場合、<b>${life}歳</b>までの${lbl}は<b>${man(cB)}万円</b>です。`;}
+  else{
+    v.innerHTML=`${life}歳までの${lbl}は、65歳受給の<b>${man(cB)}万円</b>に対し<b>${man(cS)}万円</b>。`+
+      (dL>0?`<b class="pos">${man(dL)}万円多く</b>なります。`:`<b class="neg">${man(-dL)}万円少なく</b>なります。`)+
+      (be?` ${early?'繰上げ':'繰下げ'}の場合、${net?'手取りでは':''}<b>${ageTxt(be)}</b>で${early?'65歳受給に追い抜かれます':'65歳受給を追い抜きます'}。`:(net?' 手取りでは120歳までに逆転しません。':''))+
+      (net&&be&&beG&&be!==beG?` 額面で見た${ageTxt(beG)}より${Math.abs(be-beG)>=12?Math.floor(Math.abs(be-beG)/12)+'年':''}${Math.abs(be-beG)%12?Math.abs(be-beG)%12+'か月':''}${be>beG?'遅く':'早く'}なります。`:'');
+  }
+  $('chTitle').textContent=(net?'手取りの':'')+'受給累計額の推移（65歳受給との比較）';
+  drawChart(S,B,T,be,early,net?beG:null);
+
+  // 表1 内訳
+  $('secBd').hidden=!net;
+  if(net){
+    const m12=x=>yen(x/12);
+    const sg=x=>(Math.round(x)>0?'+':Math.round(x)<0?'−':'±')+yen(Math.abs(x)); // 符号付き（全角マイナス）
+    const row=(name,a,b,ded)=>`<tr><td>${name}</td><td class="${ded?'ded':''}">${ded&&a?'−':''}${m12(a)}</td><td class="${ded?'ded':''}">${ded&&b?'−':''}${m12(b)}</td><td>${sg((ded?b-a:a-b)/12)}</td></tr>`;
+    let h=`<thead><tr><th>${bdA}歳・1か月あたり（円）</th><th>選んだ開始年齢</th><th>65歳から受給</th><th>手取りへの影響</th></tr></thead><tbody>`;
+    h+=row('年金額（額面）',yS.G,yB.G,false);
+    if(o.tax){h+=row('所得税（復興特別所得税を含む）',yS.it||0,yB.it||0,true);h+=row('住民税',yS.rt||0,yB.rt||0,true);}
+    if(o.ins){h+=row((bdA>=75?'後期高齢者医療保険料':'国民健康保険税'),yS.hoken||0,yB.hoken||0,true);
+      if(bdA>=65)h+=row('介護保険料',yS.kai||0,yB.kai||0,true);}
+    const dn=yS.net-yB.net;
+    h+=`<tr class="net"><td>手取り（月額）</td><td>${m12(yS.net)}</td><td>${m12(yB.net)}</td><td>${sg(dn/12)}</td></tr>`;
+    h+=`<tr class="netY"><td>手取り（年額）</td><td>${yen(yS.net)}</td><td>${yen(yB.net)}</td><td class="${dn>=0?'pos':'neg'}">${sg(dn)}</td></tr></tbody>`;
+    $('tBd').innerHTML=h;$('bdAgeTxt').textContent=`（${bdA}歳の1年間を1か月あたりに換算）`;
+    const st=[];if(o.ins&&bdA>=65)st.push(`介護保険料の段階：選んだ開始年齢は第${yS.stage}段階、65歳受給は第${yB.stage}段階`);
+    if(o.tax)st.push(`住民税：選んだ開始年齢は${yS.rt?'課税':'非課税'}、65歳受給は${yB.rt?'課税':'非課税'}`);
+    if(yS.G===0)st.push('この年齢ではまだ年金を受け取っていません（繰下げ待機中も保険料はかかります）');
+    $('bdNote').textContent=st.join('。')+(st.length?'。':'');
+  }
+
+  // 表2 累計
+  $('t1Title').textContent=net?'手取りの累計額（税・保険料を差し引いた後）':'受給累計額（年齢ごと）';
+  const mm=v=>Math.round(v/1000)<0?'−'+man(-v):man(v); // マイナスは全角の記号で表示
+  let anyNeg=false;
+  const ages=[62,65,70,75,80,85,90,95,100].filter(a=>a*12>Math.min(sA,sB,BASE));
+  $('t1').innerHTML='<thead><tr><th>年齢</th><th>選んだ開始年齢（万円）</th><th>65歳から受給（万円）</th><th>差額（万円）</th></tr></thead><tbody>'+
+    ages.map(a=>{const c=S.at(a*12),b=B.at(a*12),d=c-b;
+      const cell=v=>{const neg=Math.round(v/1000)<0;if(neg)anyNeg=true;return `<td${neg?' class="minus"':''}>${mm(v)}${neg?' ※':''}</td>`};
+      return`<tr${a===life?' class="cur"':''}><td>${a}歳時点</td>${cell(c)}${cell(b)}<td class="${d>0?'pos':d<0?'neg':''}">${d>0?'+':''}${mm(d)}</td></tr>`}).join('')+'</tbody>';
+  $('t1Note').hidden=!anyNeg;
+
+  // 表3 開始年齢ごと
+  const starts=[720,744,768,780,792,816,840,864,876,900].filter(m=>m<=cat.maxM);
+  const rows=starts.map(m=>{const X=scenario([m,m],kiso,kosei,cat,M,o);X.lastStart=m;const r=rate(m,cat);
+    return{m,r,ann:X.annual,tot:X.at(T),b2:m===BASE?null:breakEven(X,B),ny:X.years[Math.max(76,Math.ceil(m/12)+1)].net}});
+  const best=Math.max(...rows.map(x=>x.tot));
+  $('t2').innerHTML=`<thead><tr><th>開始年齢</th><th>増減率</th><th>月額（円）</th><th class="hide-sm">年額（万円）</th>${net?'<th>76歳の手取り<br>月額（円）</th>':''}<th>損益分岐年齢${net?'（手取り）':''}</th><th>${life}歳までの${net?'手取り':''}総額（万円）</th></tr></thead><tbody>`+
+    rows.map(x=>`<tr class="click${!sep&&x.m===sA?' cur':''}${x.tot===best&&best>0?' best':''}" data-m="${x.m}" tabindex="0"><td>${ageTxt(x.m)}</td><td class="${x.r>0?'pos':x.r<0?'neg':''}">${x.r>0?'+':''}${(x.r*100).toFixed(1)}%</td><td>${yen(x.ann/12)}</td><td class="hide-sm">${man(x.ann)}</td>${net?`<td>${yen(x.ny/12)}</td>`:''}<td>${x.m===BASE?'基準':(x.b2?ageTxt(x.b2):'なし')}</td><td>${man(x.tot)}</td></tr>`).join('')+'</tbody>';
+  document.querySelectorAll('#t2 tbody tr').forEach(tr=>{const go=()=>{setMode(false);setAge($('ayA'),$('amA'),+tr.dataset.m);calc();window.scrollTo(0,0)};tr.onclick=go;tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
+  $('lgC').style.background=early?'var(--early)':'var(--accent)';
+  $('mini').innerHTML=`<span>開始 <b>${sep&&sA!==sB?'別々':ageTxt(sA)}</b></span><span>${net?'手取り(月)':'月額'} <b class="${net?'netv':''}">${yen((net?yS.net:S.annual)/12)}円</b></span><span>損益分岐${net?'(手取り)':''} <b>${be?ageTxt(be):'—'}</b></span>`;
+}
+const ANN={kiso:847300,kosei:1000000};let unitM=false;
+function setUnit(m){if(m===unitM)return;calc();unitM=m;
+  $('uY').setAttribute('aria-pressed',!m);$('uM').setAttribute('aria-pressed',m);
+  document.querySelectorAll('.uName').forEach(e=>e.textContent=m?'月額':'年額');
+  document.querySelectorAll('.uUnit').forEach(e=>e.textContent=m?'円／月':'円／年');
+  for(const id of ['kiso','kosei']){$(id).value=m?Math.round(ANN[id]/12):ANN[id];$(id).step=m?100:1000;}
+  calc();}
+$('uY').onclick=()=>setUnit(false);$('uM').onclick=()=>setUnit(true);
+// 背景の切り替え（初めは白。選んだ方を、その人のブラウザに覚えておく）
+function setTheme(dark){document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  $('themeBtn').textContent=dark?'白い背景にする':'黒い背景にする';$('themeBtn').setAttribute('aria-pressed',dark);
+  try{localStorage.setItem('kurisage-theme',dark?'dark':'light')}catch(e){}}
+$('themeBtn').onclick=()=>setTheme(document.documentElement.getAttribute('data-theme')!=='dark');
+(()=>{let t=null;try{t=localStorage.getItem('kurisage-theme')}catch(e){}setTheme(t==='dark');})();
+function setTab(t){$('wrap').dataset.tab=t;if(t==='out')requestAnimationFrame(calc);$('tabIn').setAttribute('aria-selected',t==='in');$('tabOut').setAttribute('aria-selected',t==='out');window.scrollTo(0,0)}
+$('tabIn').onclick=()=>setTab('in');
+$('tabOut').onclick=()=>setTab('out');
+
+function drawChart(S,B,T,be,early,beG){
+  const cw=$('chart').clientWidth||760,W=Math.max(340,Math.min(760,Math.round(cw))),H=W<520?330:380,L=W<520?46:58,R=20,Tp=44,Bt=40,x0=720,x1=1200;
+  const same=S.annual===B.annual&&S.lastStart===BASE;
+  let maxV=1;for(let t=x0;t<=x1;t+=6)maxV=Math.max(maxV,S.at(t),B.at(t));
+  const step=[100,200,500,1000,2000,5000].find(s=>maxV/10000/s<=6)||5000;
+  const yMax=Math.ceil(maxV/10000/step)*step;
+  const X=t=>L+(t-x0)/(x1-x0)*(W-L-R),Y=v=>Tp+(1-Math.max(0,v)/10000/yMax)*(H-Tp-Bt);
+  const tw=(t,fs)=>[...t].reduce((w,c)=>w+(c.charCodeAt(0)>255?fs:fs*0.62),0);
+  const pill=(x,y,t,anchor,col,fs=12,bold=true)=>{const w=tw(t,fs)+14,h=fs+10;
+    const rx=Math.max(2,Math.min(W-w-2,anchor==='end'?x-w:anchor==='middle'?x-w/2:x));
+    return `<rect x="${rx}" y="${y-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="var(--panel)" stroke="${col}" stroke-width="1.2"/><text x="${rx+w/2}" y="${y+fs*0.36}" text-anchor="middle" font-size="${fs}" ${bold?'font-weight="700"':''} fill="${col}">${t}</text>`};
+  let g='';
+  for(let v=0;v<=yMax;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v*10000)}" y2="${Y(v*10000)}" stroke="var(--line)" stroke-width="${v===0?1.5:1}"/><text x="${L-8}" y="${Y(v*10000)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v.toLocaleString('ja-JP')}</text>`}
+  for(let a=60;a<=100;a+=(W<520?10:5)){g+=`<text x="${X(a*12)}" y="${H-Bt+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${a}歳</text>`}
+  g+=`<text x="${L-8}" y="${Tp-16}" text-anchor="end" font-size="11" fill="var(--muted)">（万円）</text>`;
+  const col=early?'var(--early)':'var(--accent)';
+  // 2本の線の間を塗り分け（選んだ方が多い＝緑、65歳受給の方が多い＝オレンジ）
+  if(!same){
+    let fwd='',back='';for(let t=x0;t<=x1;t+=2){fwd+=(fwd?'L':'M')+X(t).toFixed(1)+','+Y(S.at(t)).toFixed(1)}
+    for(let t=x1;t>=x0;t-=2){back+='L'+X(t).toFixed(1)+','+Y(B.at(t)).toFixed(1)}
+    const area=fwd+back+'Z';const split=be&&be<=x1?X(be):W-R;
+    const leftSign=Math.sign(S.at(Math.max(S.lastStart,BASE)+6)-B.at(Math.max(S.lastStart,BASE)+6))||-1;
+    const cL=leftSign>0?'var(--green)':'var(--orange)',cR=leftSign>0?'var(--orange)':'var(--green)';
+    g+=`<defs><clipPath id="cpL"><rect x="${L}" y="${Tp}" width="${Math.max(0,split-L)}" height="${H-Tp-Bt}"/></clipPath><clipPath id="cpR"><rect x="${split}" y="${Tp}" width="${Math.max(0,W-R-split)}" height="${H-Tp-Bt}"/></clipPath></defs>`;
+    g+=`<path d="${area}" fill="${cL}" fill-opacity=".22" clip-path="url(#cpL)"/><path d="${area}" fill="${cR}" fill-opacity=".22" clip-path="url(#cpR)"/>`;
+    $('lgGain').hidden=false;$('lgLoss').hidden=false;
+  }else{$('lgGain').hidden=true;$('lgLoss').hidden=true;}
+  const path=X_=>{let d='';for(let t=x0;t<=x1;t+=2)d+=(d?'L':'M')+X(t).toFixed(1)+','+Y(X_.at(t)).toFixed(1);return d};
+  g+=`<path d="${path(B)}" fill="none" stroke="var(--base)" stroke-width="2.5"/>`;
+  if(!same)g+=`<path d="${path(S)}" fill="none" stroke="${col}" stroke-width="3"/>`;
+  // 損益分岐（手取り計算のときは額面の損益分岐も並べる）
+  if(!same){
+    const marks=[];
+    if(be&&be<=x1)marks.push({t:be,lbl:(beG?'手取りの損益分岐 ':'損益分岐 ')+ageTxt(be),c:beG?'var(--green)':'var(--ink)',onCurve:true});
+    if(beG&&beG<=x1)marks.push({t:beG,lbl:'額面の損益分岐 '+ageTxt(beG),c:'var(--blue)',onCurve:false});
+    marks.sort((p,q)=>p.t-q.t);
+    marks.forEach((mk,i)=>{const bx=X(mk.t);
+      if(mk.onCurve){const by=Y(B.at(mk.t));
+        g+=`<line x1="${bx}" x2="${bx}" y1="${by}" y2="${H-Bt}" stroke="${mk.c}" stroke-dasharray="3 3" stroke-width="1.5"/>`;
+        g+=`<circle cx="${bx}" cy="${by}" r="6" fill="var(--panel)" stroke="${mk.c}" stroke-width="2.5"/>`;
+      }else{
+        g+=`<line x1="${bx}" x2="${bx}" y1="${Tp}" y2="${H-Bt}" stroke="${mk.c}" stroke-dasharray="6 4" stroke-width="1.5"/>`;
+      }
+      const narrow=W<520&&marks.length===2;
+      const anchor=marks.length===1||narrow?'middle':(i===0?'end':'start');
+      const dx=marks.length===1||narrow?0:(i===0?6:-6);
+      g+=pill(bx+dx,narrow&&i===0?H-Bt-44:H-Bt-16,mk.lbl,anchor,mk.c,narrow?11.5:12.5);
+    });
+    if(marks.length===2){const d=Math.abs(marks[1].t-marks[0].t);
+      if(d>0){const y=W<520?H-Bt-72:H-Bt-44,xa=X(marks[0].t),xb=X(marks[1].t);
+        const txt=(Math.floor(d/12)?Math.floor(d/12)+'年':'')+(d%12?d%12+'か月':'')+(beG<be?'遅くなる':'早くなる');
+        g+=`<line x1="${xa}" x2="${xb}" y1="${y}" y2="${y}" stroke="var(--ink)" stroke-width="1.2" marker-end="url(#arw)" marker-start="url(#arw)"/>`;
+        g+=pill((xa+xb)/2,y-16,'税・保険料で '+txt,'middle','var(--ink)',11.5,false);
+        g=`<defs><marker id="arw" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 z" fill="var(--ink)"/></marker></defs>`+g;}
+    }
+  }
+  $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="受給累計額の推移">${g}</svg>`;
+}
+
+function setMode(s){sep=s;$('mSame').setAttribute('aria-pressed',!s);$('mSep').setAttribute('aria-pressed',s);$('fB').hidden=!s;
+  $('lblA').textContent=s?'老齢基礎年金の受給開始年齢':'受給開始年齢';
+  if(s){fillSel($('ayA'),$('amA'),65,75,Math.max(65,+$('ayA').value),+$('amA').value);if(readAge($('ayA'),$('amA'))<BASE)setAge($('ayA'),$('amA'),BASE);}
+  else fillSel($('ayA'),$('amA'),60,75,+$('ayA').value,+$('amA').value);}
+
+// 国保税率（公式情報）と介護保険料の段階表をどちらも確認できた市町村のみ
+const CONFIRMED=['青森市','弘前市','八戸市','黒石市','五所川原市','十和田市','三沢市','つがる市','平川市','藤崎町','板柳町','中泊町','東北町','おいらせ町','五戸町'];
+MUNI.filter(m=>CONFIRMED.includes(m.n)).forEach(m=>$('muni').add(new Option(m.n,m.n)));
+for(let a=60;a<=99;a++)$('bdAge').add(new Option(a,a));$('bdAge').value=76;
+fillSel($('ayA'),$('amA'),60,75,65,0);
+fillSel($('ayB'),$('amB'),65,75,65,0);
+$('mSame').onclick=()=>{setMode(false);calc()};
+$('mSep').onclick=()=>{setMode(true);calc()};
+['early62','kiso','kosei','ayA','amA','ayB','amB','life','cTax','cIns','muni','bdAge'].forEach(id=>$(id).addEventListener('input',calc));
+['cTax','cIns','early62'].forEach(id=>$(id).addEventListener('change',calc));
+// 税金・保険料の欄：開くと両方にチェック、閉じると額面に戻す
+$('taxBtn').onclick=()=>{const open=$('taxBtn').getAttribute('aria-expanded')!=='true';
+  $('taxBtn').setAttribute('aria-expanded',open);$('taxBox').hidden=!open;$('taxHint').hidden=open;
+  $('cTax').checked=open;$('cIns').checked=open;
+  $('taxBtn').querySelector('.pm').textContent=open?'−':'＋';
+  $('taxBtnT').textContent=open?'額面に戻す（閉じる）':'税金・保険料を考慮する（目安）';calc();};
+let rsz;window.addEventListener('resize',()=>{clearTimeout(rsz);rsz=setTimeout(calc,200)});
+calc();
+</script>
+
+</body>
+</html>
